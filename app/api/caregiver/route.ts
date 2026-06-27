@@ -2,13 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const AFRI_API = process.env.AFRI_API_URL ?? "https://build.lewisnote.com/v1/chat/completions";
-const AFRI_KEY = process.env.AFRI_API_KEY ?? "";
+const IMOLE_URL = process.env.AFRI_API_URL ?? "https://api.imole.app/v1/responses";
+const IMOLE_KEY = process.env.AFRI_API_KEY ?? "";
+const MODEL = "gpt-5.4-mini";
+
+function extractText(data: any): string {
+  let text = "";
+  for (const item of data?.output ?? []) {
+    if (item?.type === "message") {
+      for (const c of item?.content ?? []) {
+        if (c?.type === "output_text") text += c?.text ?? "";
+      }
+    }
+  }
+  return text;
+}
 
 export async function POST(req: NextRequest) {
   const { question, childName, topNeeds, recentHistory } = await req.json();
   if (!question?.trim()) return NextResponse.json({ error: "No question" }, { status: 400 });
-  if (!AFRI_KEY) return NextResponse.json({ error: "Not configured" }, { status: 500 });
+  if (!IMOLE_KEY) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
   const needsSummary = topNeeds?.length
     ? topNeeds.map(([l, n]: [string, number]) => `${l} (${n}x)`).join(", ")
@@ -30,60 +43,42 @@ Answer the caregiver's question with empathy and practical insight. Be specific 
 IMPORTANT: Write in plain text only. Do not use markdown. No asterisks, no bold, no headers, no bullet points, no hyphens as list markers. Write in clear conversational sentences.`;
 
   const ctrl = new AbortController();
-  const connectTimer = setTimeout(() => ctrl.abort(), 30000);
+  const timer = setTimeout(() => ctrl.abort(), 30000);
 
-  let upstream: Response;
+  let text = "";
   try {
-    upstream = await fetch(AFRI_API, {
+    const res = await fetch(IMOLE_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${AFRI_KEY}` },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${IMOLE_KEY}`,
+        "User-Agent": "NeuroBridge",
+      },
       body: JSON.stringify({
-        model: "gpt-5.4-mini",
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: question },
-        ],
-        max_tokens: 350,
-        stream: true,
+        model: MODEL,
+        instructions: system,
+        input: question,
+        max_output_tokens: 350,
+        temperature: 1,
       }),
       signal: ctrl.signal,
     });
+    const data = await res.json();
+    text = extractText(data);
   } catch {
-    clearTimeout(connectTimer);
+    clearTimeout(timer);
     return NextResponse.json({ error: "Upstream error" }, { status: 502 });
   }
-  clearTimeout(connectTimer);
+  clearTimeout(timer);
 
-  if (!upstream.ok || !upstream.body) {
-    return NextResponse.json({ error: "Upstream error" }, { status: 502 });
-  }
+  if (!text) return NextResponse.json({ error: "Upstream error" }, { status: 502 });
 
+  // Stream the answer to the browser word by word (Imole returns it whole).
   const encoder = new TextEncoder();
+  const parts = text.match(/\S+\s*/g) ?? [text];
   const readable = new ReadableStream({
-    async start(controller) {
-      const reader = upstream.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";        // keep partial last line
-          for (const line of lines) {
-            const t = line.trim();
-            if (!t.startsWith("data:")) continue;
-            const payload = t.slice(5).trim();
-            if (payload === "[DONE]") { controller.close(); return; }
-            try {
-              const parsed = JSON.parse(payload);
-              const token: string = parsed.choices?.[0]?.delta?.content ?? "";
-              if (token) controller.enqueue(encoder.encode(token));
-            } catch { /* incomplete chunk, ignore */ }
-          }
-        }
-      } catch { /* stream interrupted */ }
+    start(controller) {
+      for (const p of parts) controller.enqueue(encoder.encode(p));
       controller.close();
     },
   });

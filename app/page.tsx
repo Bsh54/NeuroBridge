@@ -254,8 +254,8 @@ export default function Landing() {
             {/* Small tiles */}
             {[
               { icon: <IVoice />, title: "Voice output", desc: "Message spoken aloud automatically. No voice needed from the user.", col: "var(--primary)" },
-              { icon: <IDash />, title: "Caregiver dashboard", desc: "Full history with timestamps. Track emotional patterns and frequent needs.", col: "var(--primary)" },
-              { icon: <ILock />, title: "Privacy first", desc: "Everything stays on the device. No account required, no server uploads.", col: "var(--green)" },
+              { icon: <IDash />, title: "Caregiver dashboard", desc: "Timestamped history, plus an AI assistant that answers caregivers' questions using the person's own patterns.", col: "var(--primary)" },
+              { icon: <ILock />, title: "Privacy first", desc: "No account needed. Personal data is kept private to support caregivers, and is never sold or shared.", col: "var(--green)" },
               { icon: <IAccess />, title: "Accessible by design", desc: "56px touch targets, 7:1 contrast ratio, full screen-reader support.", col: "var(--green)" },
             ].map((f, i) => (
               <div key={i} style={{ gridColumn: "span 1", background: "var(--bg-card)", border: "1.5px solid var(--border-soft)", borderRadius: 18, padding: "24px" }}>
