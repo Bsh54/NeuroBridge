@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -38,7 +38,7 @@ IMPORTANT: Write in plain text only. Do not use markdown. No asterisks, no bold,
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${AFRI_KEY}` },
       body: JSON.stringify({
-        model: "gpt-5.5",
+        model: "gpt-5.4-mini",
         messages: [
           { role: "system", content: system },
           { role: "user", content: question },

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { buildSystemPrompt, buildUserMessage } from "@/lib/core-prompt";
 
 export const runtime = "nodejs";
@@ -9,10 +9,10 @@ const AFRI_KEY = process.env.AFRI_API_KEY ?? "";
 function normalize(raw: string): string {
   return raw
     .trim()
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, " ")
-    .replace(/…/g, "...")
+    .replace(/[â€˜â€™]/g, "'")
+    .replace(/[â€œâ€]/g, '"')
+    .replace(/[â€“â€”]/g, " ")
+    .replace(/â€¦/g, "...")
     .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${AFRI_KEY}` },
       body: JSON.stringify({
-        model: "gpt-5.5",
+        model: "gpt-5.4-mini",
         messages: [
           { role: "system", content: buildSystemPrompt() },
           { role: "user", content: buildUserMessage(name, pictos, pictos.length, childContext ?? "") },
