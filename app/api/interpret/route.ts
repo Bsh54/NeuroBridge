@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { buildSystemPrompt, buildUserMessage } from "@/lib/core-prompt";
 
 export const runtime = "nodejs";
