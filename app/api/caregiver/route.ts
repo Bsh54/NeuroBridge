@@ -1,27 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { callImole, imoleConfigured } from "@/lib/imole";
 
 export const runtime = "nodejs";
-
-const IMOLE_URL = process.env.AFRI_API_URL ?? "https://api.imole.app/v1/responses";
-const IMOLE_KEY = process.env.AFRI_API_KEY ?? "";
-const MODEL = "gpt-5.4-mini";
-
-function extractText(data: any): string {
-  let text = "";
-  for (const item of data?.output ?? []) {
-    if (item?.type === "message") {
-      for (const c of item?.content ?? []) {
-        if (c?.type === "output_text") text += c?.text ?? "";
-      }
-    }
-  }
-  return text;
-}
 
 export async function POST(req: NextRequest) {
   const { question, childName, topNeeds, recentHistory } = await req.json();
   if (!question?.trim()) return NextResponse.json({ error: "No question" }, { status: 400 });
-  if (!IMOLE_KEY) return NextResponse.json({ error: "Not configured" }, { status: 500 });
+  if (!imoleConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
   const needsSummary = topNeeds?.length
     ? topNeeds.map(([l, n]: [string, number]) => `${l} (${n}x)`).join(", ")
@@ -43,29 +28,13 @@ Answer the caregiver's question with empathy and practical insight. Be specific 
 IMPORTANT: Write in plain text only. Do not use markdown. No asterisks, no bold, no headers, no bullet points, no hyphens as list markers. Write in clear conversational sentences.`;
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 30000);
+  const timer = setTimeout(() => ctrl.abort(), 40000);
 
   let text = "";
   try {
-    const res = await fetch(IMOLE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${IMOLE_KEY}`,
-        "User-Agent": "NeuroBridge",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        instructions: system,
-        input: question,
-        max_output_tokens: 350,
-        temperature: 1,
-      }),
-      signal: ctrl.signal,
-    });
-    const data = await res.json();
-    text = extractText(data);
-  } catch {
+    text = await callImole(system, question, 350, ctrl.signal);
+  } catch (e) {
+    console.error("[caregiver] failed", e);
     clearTimeout(timer);
     return NextResponse.json({ error: "Upstream error" }, { status: 502 });
   }
