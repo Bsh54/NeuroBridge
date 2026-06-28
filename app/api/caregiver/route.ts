@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callImole, imoleConfigured } from "@/lib/imole";
+import { callAI, aiConfigured } from "@/lib/ai";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const { question, childName, topNeeds, recentHistory } = await req.json();
   if (!question?.trim()) return NextResponse.json({ error: "No question" }, { status: 400 });
-  if (!imoleConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
+  if (!aiConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
   const needsSummary = topNeeds?.length
     ? topNeeds.map(([l, n]: [string, number]) => `${l} (${n}x)`).join(", ")
@@ -32,7 +32,7 @@ IMPORTANT: Write in plain text only. Do not use markdown. No asterisks, no bold,
 
   let text = "";
   try {
-    text = await callImole(system, question, 350, ctrl.signal);
+    text = await callAI(system, question, 350, ctrl.signal);
   } catch (e) {
     console.error("[caregiver] failed", e);
     clearTimeout(timer);
